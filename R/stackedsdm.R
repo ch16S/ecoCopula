@@ -46,7 +46,7 @@
 #' fit0 <- stackedsdm(abund, formula_X = ~ bare.sand, data = X, family = myfamily, ncores = 2)
 stackedsdm <- function(y, formula_X= ~1, data=NULL, family="negative.binomial", 
                        trial_size = 1, do_parallel = FALSE, 
-                       ncores = NULL, trace = FALSE) {
+                       ncores = NULL, trace = FALSE, ... ) {
 
         tol <- 1e-8
         y <- as.matrix(y)
@@ -80,13 +80,13 @@ stackedsdm <- function(y, formula_X= ~1, data=NULL, family="negative.binomial",
                 out_params <- list()
                 
                 if(family[j] %in% c("gaussian", "poisson")) {
-                        fit_init <- glm2(formula_X, family = family[j], data = data.frame(resp = y[,j], data))
+                        fit_init <- glm2(formula_X, family = family[j], data = data.frame(resp = y[,j], data), ... )
                         out_params$coefficients <- fit_init$coefficients
                         if(family[j] == "gaussian")
                                 out_params$dispparam <- summary(fit_init)$sigma^2
                 }
                 if(family[j] %in% c("Gamma", "exponential")) {
-                        fit_init <- glm2(formula_X, family = Gamma(link = "log"), data = data.frame(resp = y[,j], data))
+                        fit_init <- glm2(formula_X, family = Gamma(link = "log"), data = data.frame(resp = y[,j], data), ... )
                         out_params$coefficients <- fit_init$coefficients
                         if(family[j] == "exponential") {
                                 out_params$coefficients <- summary(fit_init, disperson = 1)$coefficients[,1]
@@ -98,22 +98,22 @@ stackedsdm <- function(y, formula_X= ~1, data=NULL, family="negative.binomial",
                         if(is.matrix(trial_size))
                                 cw_trial_size <- trial_size[,j]
                         formula_X <- update.formula(formula_X, cbind(resp, trial_size - resp) ~ .)
-                        fit_init <- glm2(formula_X, family = "binomial", data = data.frame(resp = y[,j], trial_size = cw_trial_size, data))
+                        fit_init <- glm2(formula_X, family = "binomial", data = data.frame(resp = y[,j], trial_size = cw_trial_size, data), ... )
                         out_params$coefficients <- fit_init$coefficients
                 }
                 if(family[j] %in% c("negative.binomial")) {
-                        fit_init <- manyglm(formula_X, data = data.frame(resp = y[,j], data), family = "negative.binomial")
+                        fit_init <- manyglm(formula_X, data = data.frame(resp = y[,j], data), family = "negative.binomial", ... )
                         out_params$coefficients <- fit_init$coefficients
                         out_params$dispparam<- fit_init$phi
                 }
                 if(family[j] == "tweedie") {
-                        fit_init <- gam(formula_X, data = data.frame(resp = y[,j], data), family = mgcv::tw(), method = "ML")
+                        fit_init <- gam(formula_X, data = data.frame(resp = y[,j], data), family = mgcv::tw(), method = "ML", ... )
                         out_params$coefficients <- fit_init$coefficients
                         out_params$dispparam <- summary(fit_init)$dispersion
                         out_params$powerparam <- as.numeric(strsplit(strsplit(fit_init$family$family, "p=")[[1]][2], ")")[[1]])
                 }
                 if(family[j] == "beta") {
-                        fit_init <- betareg(formula_X, data = data.frame(resp = y[,j], data), link = "logit") 
+                        fit_init <- betareg(formula_X, data = data.frame(resp = y[,j], data), link = "logit", ... )
                         out_params$coefficients <- fit_init$coefficients$mean
                         out_params$dispparam <- 1/fit_init$coefficients$precision
                 }
@@ -121,10 +121,10 @@ stackedsdm <- function(y, formula_X= ~1, data=NULL, family="negative.binomial",
                 #      fit_init <- countreg::zerotrunc(formula_X, data = data.frame(resp = y[,j], data), dist = "poisson")
                 #      out_params$coefficients <- fit_init$coefficients
                 #      }
-                # if(family[j] == "ztnegative.binomial") {
-                #      fit_init <- countreg::zerotrunc(formula_X, data = data.frame(resp = y[,j], data), dist = "negbin")
-                #      out_params$coefficients <- fit_init$coefficients
-                #      out_params$dispparam <- 1/fit_init$theta
+                 if(family[j] == "ztnegative.binomial") {
+                     fit_init <- countreg::zerotrunc(formula_X, data = data.frame(resp = y[,j], data), dist = "negbin", ... )
+                      out_params$coefficients <- fit_init$coefficients
+                     out_params$dispparam <- 1/fit_init$theta
                 #      }
                 # if(family[j] == "zipoisson") {
                 #      fit_init <- countreg::zeroinfl(formula_X, data = data.frame(resp = y[,j], data), dist = "poisson", link = "logit")
@@ -138,7 +138,7 @@ stackedsdm <- function(y, formula_X= ~1, data=NULL, family="negative.binomial",
                 #      out_params$dispparam <- 1/fit_init$theta
                 #      }
                 if(family[j] == "ordinal") {
-                        fit_init <- clm(formula_X, data = data.frame(resp = ordered(y[,j]), data), link = "logit") 
+                        fit_init <- clm(formula_X, data = data.frame(resp = ordered(y[,j]), data), link = "logit", ... )
                         out_params$coefficients <- fit_init$beta
                         out_params$cutoffs <- fit_init$alpha
                 }
